@@ -1,0 +1,65 @@
+[project]
+name = "bydev"
+version = "0.1.0"
+description = "bydev 라이선스 API 공식 Python SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인 · 판매자 서버 도우미"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+requires-python = ">=3.11"
+authors = [{ name = "한비트 주식회사" }]
+keywords = ["bydev", "license", "licensing", "oauth", "device-flow"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]
+# Ed25519 — 표준 라이브러리에 없다. HTTP는 표준 urllib
+dependencies = ["cryptography>=44"]
+
+[project.urls]
+Homepage = "https://developedby.dev/sell/docs"
+Repository = "https://github.com/developedby-dev/sdk-python"
+
+[project.optional-dependencies]
+# 운영체제 보안 저장소(macOS 키체인 · Windows 자격 증명 관리자 · Secret Service) — keyring_credential_store
+keyring = ["keyring>=25"]
+
+[dependency-groups]
+# keyring은 시험이 가짜 백엔드로 keyring_credential_store를 본다
+dev = ["pytest>=9.1", "ruff>=0.17", "mypy>=2.4", "keyring>=25"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bydev"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+# 생성 파일은 생성기가 모양을 정한다(pnpm verify에 Python이 필요 없게)
+extend-exclude = ["src/bydev/_generated.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF"]
+# 줄 길이는 포매터가 맞춘다 — 한글 주석 · 문서 문자열은 표시 폭이 두 배라 E501을 끈다
+ignore = ["RUF001", "RUF002", "RUF003", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests", "harness", "examples"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["keyring", "keyring.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
