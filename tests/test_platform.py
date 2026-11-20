@@ -208,7 +208,10 @@ def test_default_store_choice() -> None:
     linux.tools.add("secret-tool")
     assert isinstance(_default_store("App", "cli", None, linux), _SecretToolStore)
     assert isinstance(_default_store("App", "cli", None, FakeOs("macos")), _FileStore)
-    assert platform.app_data_dir("App", _os="macos").endswith("Library/Application Support/App")
+    # 경로 구분자는 시험을 돌리는 운영체제를 따른다 — Windows에서도 같게 견준다
+    assert (
+        Path(platform.app_data_dir("App", _os="macos")).as_posix().endswith("Library/Application Support/App")
+    )
 
 
 class FakeKeyring:
