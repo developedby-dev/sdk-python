@@ -74,13 +74,19 @@ class LoginAttempt:
         with self._lock:
             return self._settled
 
-    def schedule_poll(self) -> None:
-        """폴링 지터는 위로만(interval보다 이르면 SLOW_DOWN이다)."""
+    def schedule_poll(self, retry_after_sec: int = 0) -> None:
+        """폴링 지터는 위로만(interval보다 이르면 SLOW_DOWN이다). 429면 retry_after_sec보다 이르게 묻지 않는다(명세 5절)."""
         ports = self._api.ports
         with self._lock:
             interval = self._interval
-        delay = jittered(
-            ports.random, max(0, interval) * 1000, Rules.LOGIN_POLL_JITTER_MIN, Rules.LOGIN_POLL_JITTER_MAX
+        delay = max(
+            jittered(
+                ports.random,
+                max(0, interval) * 1000,
+                Rules.LOGIN_POLL_JITTER_MIN,
+                Rules.LOGIN_POLL_JITTER_MAX,
+            ),
+            retry_after_sec * 1000,
         )
         if ports.clock.now_ms() + delay > self._expires_at_ms:
             self._finish(BydevError(Codes.EXPIRED_TOKEN, "로그인 코드가 만료됐다 — 처음부터 다시"))
@@ -118,8 +124,11 @@ class LoginAttempt:
                 self._finish(e)
             return
         error = outcome
-        if error.code == Codes.AUTHORIZATION_PENDING or error.is_transient:
+        if error.code == Codes.AUTHORIZATION_PENDING:
             self.schedule_poll()
+        elif error.is_transient:
+            limited = error.code == Codes.RATE_LIMITED or error.http_status == 429
+            self.schedule_poll((error.retry_after_sec or 0) if limited else 0)
         elif error.code == Codes.SLOW_DOWN:
             with self._lock:
                 n = error.retry_after_sec

@@ -1,4 +1,4 @@
-"""bydev 라이선스 API의 공식 Python SDK(동작 명세 `sdks/spec`)."""
+"""데브 라이선스 API의 공식 Python SDK(동작 명세 `sdks/spec`)."""
 
 from ._generated import (
     Codes,

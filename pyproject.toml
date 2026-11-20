@@ -1,7 +1,7 @@
 [project]
 name = "bydev"
 version = "0.1.0"
-description = "bydev 라이선스 API 공식 Python SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인 · 판매자 서버 도우미"
+description = "데브 라이선스 API 공식 Python SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인 · 판매자 서버 도우미"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 license-files = ["LICENSE-MIT", "LICENSE-APACHE"]

@@ -10,7 +10,7 @@ from typing import Final, NamedTuple
 class Spec:
     """이 SDK가 따르는 동작 명세 판."""
 
-    VERSION: Final = "1.1.0"
+    VERSION: Final = "1.1.1"
     DEVICE_CODE_GRANT_TYPE: Final = "urn:ietf:params:oauth:grant-type:device_code"
 
 
@@ -237,7 +237,7 @@ class Routes:
 class Rules:
     """규칙 (sdks/spec/rules.json)."""
 
-    SPEC_VERSION: Final = "1.1.0"
+    SPEC_VERSION: Final = "1.1.1"
     API: Final = "v1"
     USER_AGENT_LANGUAGES: Final[tuple[str, ...]] = ("typescript", "dotnet", "swift", "kotlin", "python", "go", "rust", "c")
     USER_AGENT_PATTERN: Final = "^bydev-(typescript|dotnet|swift|kotlin|python|go|rust|c)/[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?( .+)?$"
