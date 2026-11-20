@@ -23,6 +23,10 @@ from ._support import dumps, loads
 from .ports import CredentialRecord, CredentialStore, FingerprintSource, LogSink
 from .session import DeviceInfo
 
+# Windows에서 명령(powershell · reg)을 콘솔 창 없이 띄운다(CREATE_NO_WINDOW). GUI 앱(pythonw · 묶은 실행 파일)이 띄운 콘솔 명령은 창이 깜빡이고,
+# 콘솔을 만들지 못하면 0xC0000142로 끝난다(명세 2절). 다른 운영체제는 0
+_NO_CONSOLE = 0x08000000 if sys.platform == "win32" else 0
+
 
 class ExitCodeError(OSError):
     """명령이 0이 아닌 코드로 끝났다. ``stderr``는 그 명령의 오류 출력이다."""
@@ -78,6 +82,7 @@ class _RealOs:
             # 오류 출력도 받아 실어 보낸다 — secret-tool은 "항목 없음"과 오류를 같은 종료 코드(1)로 내고 오류 출력으로만 가른다
             capture_output=True,
             check=False,
+            creationflags=_NO_CONSOLE,
         )
         if done.returncode != 0:
             raise ExitCodeError(program, done.returncode, done.stderr.decode(errors="replace"))
