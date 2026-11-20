@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import stat
 from pathlib import Path
+from typing import Any
 
 import pytest
 from keyring.errors import PasswordDeleteError
@@ -24,19 +25,34 @@ RECORD_JSON = '{"refreshToken":"rt_node_test_00000000001","savedAt":"2026-10-06T
 
 
 class FakeOs:
-    def __init__(self, name: str, answers: dict[str, str | Exception] | None = None) -> None:
+    def __init__(self, name: str, answers: dict[str, Any] | None = None) -> None:
         self.name = name
-        self.answers = answers or {}
+        self.answers = (
+            answers or {}
+        )  # "명령 첫인자" 또는 "명령" → str | Exception | list(차례로 — 마지막 값을 되풀이)
         self.calls: list[tuple[str, list[str], str | None]] = []
         self.files: dict[str, str] = {}
         self.tools: set[str] = set()
+        self.slept: list[float] = []
+        self.registry: str | None = None
 
     def exec(self, program: str, args: list[str], stdin: str | None = None) -> str:
         self.calls.append((program, args, stdin))
-        answer = self.answers.get(f"{program} {args[0]}", self.answers.get(program, ""))
+        key = f"{program} {args[0]}" if f"{program} {args[0]}" in self.answers else program
+        answer = self.answers.get(key, "")
+        if isinstance(answer, list):
+            if len(answer) > 1:
+                self.answers[key] = answer[1:]
+            answer = answer[0]
         if isinstance(answer, Exception):
             raise answer
-        return answer
+        return str(answer)
+
+    def sleep(self, seconds: float) -> None:
+        self.slept.append(seconds)
+
+    def machine_guid(self) -> str | None:
+        return self.registry
 
     def has(self, program: str) -> bool:
         return program in self.tools
@@ -82,6 +98,32 @@ def test_fingerprint_per_os() -> None:
     linux = FakeOs("linux")
     linux.files["/var/lib/dbus/machine-id"] = "0123456789abcdef0123456789abcdef\n"
     assert _OsFingerprint(None, linux).read() == "0123456789abcdef0123456789abcdef"
+
+
+def test_fingerprint_retries_before_install_id() -> None:
+    """1.2.0 — 2026-11-20 Windows에서 MachineGuid 읽기가 한 번 실패해 설치 ID로 등록됐다(같은 PC가 다른 기기)."""
+    guid = "    MachineGuid    REG_SZ    3f1e9a2b-1111-2222-3333-444455556666\r\n"
+    os_ = FakeOs("windows", {"reg": [ExitCodeError("reg", 1), "", guid]})
+    source = _OsFingerprint("/app/install-id", os_)
+    assert source.read() == "3f1e9a2b-1111-2222-3333-444455556666"
+    assert "/app/install-id" not in os_.files and len(os_.calls) == 3
+    delay = Rules.FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS / 1000
+    assert os_.slept == [delay, delay]
+    every = FakeOs("windows", {"reg": ExitCodeError("reg", 1)})
+    assert source_of(every).read() is not None
+    assert len(every.calls) == Rules.FINGERPRINT_SOURCE_READ_ATTEMPTS
+
+
+def test_fingerprint_windows_registry_api_first() -> None:
+    os_ = FakeOs("windows", {"reg": "    MachineGuid    REG_SZ    from-reg-command\r\n"})
+    os_.registry = "from-registry-api"
+    assert _OsFingerprint(None, os_).read() == "from-registry-api" and os_.calls == []
+    os_.registry = None
+    assert _OsFingerprint(None, os_).read() == "from-reg-command"
+
+
+def source_of(os_: FakeOs) -> _OsFingerprint:
+    return _OsFingerprint("/app/install-id", os_)
 
 
 def test_fingerprint_install_id_fallback() -> None:

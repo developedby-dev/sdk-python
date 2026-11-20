@@ -226,6 +226,8 @@ class LicenseSession:
         self._heartbeat: Cancel | None = None
         self._offline: Cancel | None = None
         self._fallback: str | None = None
+        # 처음 계산한 지문 해시 — 한 실행 동안 다시 쓴다(명세 10절). 획득마다 다시 읽으면 일시적인 읽기 실패 하나로 다른 기기가 된다
+        self._fingerprint: str | None = None
 
     def _cancel_timers(self) -> None:
         for timer in (self._heartbeat, self._offline):
@@ -351,6 +353,16 @@ class LicenseSession:
         self._after(0, lambda: self._acquire(run, force, key, 0))
 
     def _fingerprint_hash(self) -> str:
+        with self._lock:
+            if self._fingerprint is not None:
+                return self._fingerprint
+        computed = self._compute_fingerprint_hash()
+        with self._lock:
+            if self._fingerprint is None:  # 동시에 계산했으면 먼저 정한 값
+                self._fingerprint = computed
+            return self._fingerprint
+
+    def _compute_fingerprint_hash(self) -> str:
         ports = self._api.ports
         try:
             source = ports.fingerprint.read()

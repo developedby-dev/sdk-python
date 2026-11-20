@@ -72,6 +72,7 @@ class _State:
     fail_load: bool = False
     fail_save: bool = False
     fail_clear: bool = False
+    fail_fingerprint: bool = False  # set fingerprint.fail — 지문 출처를 읽지 못한다
     client: LicenseClient | None = None
     login: LoginAttempt | None = None
 
@@ -213,7 +214,9 @@ class HarnessPorts:
         emit({"type": "event", "now": at, "event": {"kind": "storage", "op": "clear"}})
 
     def read(self) -> str | None:
-        return self._fingerprint
+        with _H.lock:
+            failing = _H.fail_fingerprint
+        return None if failing else self._fingerprint
 
     def debug(self, message: str) -> None:
         pass
@@ -517,6 +520,8 @@ def main() -> None:
                             _H.fail_save = value
                         case "storage.failClear":
                             _H.fail_clear = value
+                        case "fingerprint.fail":
+                            _H.fail_fingerprint = value
                 settle()
             case "end":
                 sys.stdout.flush()

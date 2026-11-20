@@ -13,6 +13,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Protocol
@@ -48,6 +49,12 @@ class _Os(Protocol):
     def remove(self, path: str) -> None: ...
 
     def new_id(self) -> str: ...
+
+    def sleep(self, seconds: float) -> None: ...
+
+    def machine_guid(self) -> str | None:
+        """Windows 레지스트리 API로 읽은 MachineGuid — 읽지 못하면 None(그때는 reg 명령으로)."""
+        ...
 
 
 def _os_name() -> str:
@@ -106,6 +113,27 @@ class _RealOs:
     def new_id(self) -> str:
         return str(uuid.uuid4())
 
+    def sleep(self, seconds: float) -> None:
+        time.sleep(seconds)
+
+    def machine_guid(self) -> str | None:
+        """명령을 띄우지 않고 표준 라이브러리 winreg로 읽는다(명세 10절) — 32비트 Python도 64비트 보기를 읽는다(KEY_WOW64_64KEY)."""
+        if sys.platform != "win32":
+            return None
+        import winreg  # Windows에만 있다
+
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Microsoft\Cryptography",
+                0,
+                winreg.KEY_READ | winreg.KEY_WOW64_64KEY,
+            ) as key:
+                value, kind = winreg.QueryValueEx(key, "MachineGuid")
+        except OSError:
+            return None
+        return value if kind == winreg.REG_SZ and isinstance(value, str) else None
+
 
 _REAL = _RealOs()
 
@@ -143,12 +171,16 @@ class _OsFingerprint:
         self._os = os_
 
     def read(self) -> str | None:
-        try:
-            machine = (self._machine_id() or "").strip()
-        except OSError:
-            machine = ""
-        if machine:
-            return machine
+        # 실패하거나 빈 값이면 설치 ID로 물러나기 전에 다시 읽는다(명세 10절) — 일시적인 실패 하나로 같은 PC가 다른 기기가 되지 않게
+        for attempt in range(max(Rules.FINGERPRINT_SOURCE_READ_ATTEMPTS, 1)):
+            if attempt > 0:
+                self._os.sleep(Rules.FINGERPRINT_SOURCE_READ_RETRY_DELAY_MS / 1000)
+            try:
+                machine = (self._machine_id() or "").strip()
+            except OSError:
+                machine = ""
+            if machine:
+                return machine
         if self._file is None:
             return None
         saved = (self._os.read_file(self._file) or "").strip()
@@ -161,6 +193,11 @@ class _OsFingerprint:
     def _machine_id(self) -> str | None:
         match self._os.name:
             case "windows":
+                api = (
+                    self._os.machine_guid() or ""
+                ).strip()  # 레지스트리 API가 먼저 — 프로세스를 띄우지 않는다
+                if api:
+                    return api
                 out = self._os.exec(
                     "reg", ["query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"]
                 )
