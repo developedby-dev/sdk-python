@@ -140,3 +140,33 @@ def test_optional_entitled_and_build_id() -> None:
     assert LicenseClaims.read(claims).build_id is None
     assert "build_id" not in LicenseClaims.read(claims).to_dict()
     assert LicenseClaims.read({**claims, "build_id": "build_1"}).to_dict()["build_id"] == "build_1"
+
+
+def test_resolve_keeps_falsy_ports() -> None:
+    # 앱이 준 포트가 거짓으로 판정돼도(__len__ 0 등) 기본값으로 바꾸지 않는다 — 판정은 None인지로만 한다
+    from bydev.ports import Ports, resolve
+
+    class EmptyLookingStore:
+        def __len__(self) -> int:
+            return 0
+
+        def load(self) -> None:
+            return None
+
+        def save(self, record: object) -> None:
+            pass
+
+        def clear(self) -> None:
+            pass
+
+    class FalsyFingerprint:
+        def __bool__(self) -> bool:
+            return False
+
+        def read(self) -> str:
+            return "fp"
+
+    store, fingerprint = EmptyLookingStore(), FalsyFingerprint()
+    resolved = resolve(Ports(store=store, fingerprint=fingerprint))
+    assert resolved.store is store
+    assert resolved.fingerprint is fingerprint

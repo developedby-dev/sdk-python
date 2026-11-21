@@ -18,7 +18,7 @@ from .models import DeviceCode, DevicePage, DeviceRelease, Entitlement, LicenseC
 from .ports import Ports, resolve
 from .session import AppInfo, DeviceInfo, LicenseSession
 
-SDK_VERSION = "0.1.0"
+SDK_VERSION = "1.0.0"
 USER_AGENT = f"bydev-python/{SDK_VERSION}"
 
 

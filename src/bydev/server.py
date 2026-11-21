@@ -46,7 +46,7 @@ def verify_webhook(
         raise BydevError(
             Codes.WEBHOOK_INVALID, "웹훅 헤더(webhook-id · webhook-timestamp · webhook-signature)가 없다"
         )
-    now_sec = (clock or SystemClock()).now_ms() / 1000
+    now_sec = (clock if clock is not None else SystemClock()).now_ms() / 1000
     if not timestamp.isdigit() or abs(now_sec - int(timestamp)) > Rules.WEBHOOK_TOLERANCE_SEC:
         raise BydevError(Codes.WEBHOOK_INVALID, "웹훅 시각이 허용 범위 밖이다 — 재전송 공격일 수 있다")
     candidates = []

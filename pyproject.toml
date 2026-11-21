@@ -1,6 +1,6 @@
 [project]
 name = "bydev"
-version = "0.1.0"
+version = "1.0.0"
 description = "데브 라이선스 API 공식 Python SDK — 디바이스 로그인 · 토큰 회전 · 세션 리스 · licenseToken 검증 · 업데이트 확인 · 판매자 서버 도우미"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 authors = [{ name = "한비트 주식회사" }]
 keywords = ["bydev", "license", "licensing", "oauth", "device-flow"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: MacOS",

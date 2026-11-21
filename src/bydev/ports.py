@@ -171,12 +171,13 @@ def resolve(ports: Ports) -> ResolvedPorts:
         UrllibTransport,
     )
 
+    # 빈 칸(None)만 기본값으로 채운다 — `or`로 고르면 앱이 준 포트가 거짓으로 판정될 때(__len__ 0 등) 말없이 바뀌어 로그인 기록이 사라진다
     return ResolvedPorts(
-        transport=ports.transport or UrllibTransport(),
-        store=ports.store or MemoryCredentialStore(),
-        clock=ports.clock or SystemClock(),
-        scheduler=ports.scheduler or ThreadScheduler(),
-        random=ports.random or SecureRandom(),
-        fingerprint=ports.fingerprint or NoFingerprint(),
-        logger=ports.logger or SilentLog(),
+        transport=ports.transport if ports.transport is not None else UrllibTransport(),
+        store=ports.store if ports.store is not None else MemoryCredentialStore(),
+        clock=ports.clock if ports.clock is not None else SystemClock(),
+        scheduler=ports.scheduler if ports.scheduler is not None else ThreadScheduler(),
+        random=ports.random if ports.random is not None else SecureRandom(),
+        fingerprint=ports.fingerprint if ports.fingerprint is not None else NoFingerprint(),
+        logger=ports.logger if ports.logger is not None else SilentLog(),
     )
